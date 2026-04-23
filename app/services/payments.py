@@ -4,10 +4,9 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.broker.topology import PAYMENTS_NEW_EVENT_TOPIC
 from app.db.models import Outbox, OutboxStatus, Payment, PaymentStatus
 from app.schemas.payment import PaymentCreate
-
-PAYMENTS_NEW_TOPIC = "payments.new"
 
 
 async def create_or_get_payment(
@@ -30,7 +29,7 @@ async def create_or_get_payment(
     )
 
     outbox = Outbox(
-        topic=PAYMENTS_NEW_TOPIC,
+        topic=PAYMENTS_NEW_EVENT_TOPIC,
         status=OutboxStatus.pending,
         payload={
             "payment_id": str(payment.id),

@@ -1,13 +1,16 @@
 import asyncio
+import logging
 from datetime import datetime, timezone
 
 from faststream.rabbit import RabbitBroker
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.broker.topology import PAYMENTS_EXCHANGE, PAYMENTS_NEW_ROUTING_KEY
+from app.broker.topology import PAYMENTS_EXCHANGE
 from app.db.models import Outbox, OutboxStatus
 from app.db.session import SessionLocal
+
+logger = logging.getLogger(__name__)
 
 
 class OutboxPublisher:
@@ -28,8 +31,7 @@ class OutboxPublisher:
             try:
                 await self._publish_pending_batch()
             except Exception:
-                # Outbox loop should keep running even if one batch fails.
-                pass
+                logger.exception("Outbox publisher batch failed")
             await asyncio.sleep(self._poll_interval_seconds)
 
     async def _publish_pending_batch(self) -> None:
@@ -42,7 +44,7 @@ class OutboxPublisher:
                 try:
                     await self._broker.publish(
                         event.payload,
-                        PAYMENTS_NEW_ROUTING_KEY,
+                        event.topic,
                         exchange=PAYMENTS_EXCHANGE,
                     )
                     event.status = OutboxStatus.published
