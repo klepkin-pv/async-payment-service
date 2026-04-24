@@ -48,7 +48,7 @@ async def send_to_dlq(message: dict, error: str) -> None:
             "failed_at": datetime.now(tz=timezone.utc).isoformat(),
             "payload": message,
         },
-        PAYMENTS_DLQ_ROUTING_KEY,
+        routing_key=PAYMENTS_DLQ_ROUTING_KEY,
         exchange=PAYMENTS_DLQ_EXCHANGE,
     )
 

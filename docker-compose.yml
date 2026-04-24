@@ -17,8 +17,10 @@ services:
       retries: 10
 
   rabbitmq:
-    image: rabbitmq:3.13-management
+    image: rabbitmq:4.2.5-management
     container_name: payments_rabbitmq
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -50,8 +52,7 @@ services:
     env_file:
       - .env.example
     command: >
-      sh -c "alembic upgrade head &&
-             python -m consumer.main"
+      sh -c "python -m consumer.main"
     depends_on:
       postgres:
         condition: service_healthy
@@ -60,3 +61,4 @@ services:
 
 volumes:
   postgres_data:
+  rabbitmq_data:

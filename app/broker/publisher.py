@@ -43,8 +43,8 @@ class OutboxPublisher:
             for event in rows:
                 try:
                     await self._broker.publish(
-                        event.payload,
-                        event.topic,
+                        message=event.payload,
+                        routing_key=event.topic,
                         exchange=PAYMENTS_EXCHANGE,
                     )
                     event.status = OutboxStatus.published
