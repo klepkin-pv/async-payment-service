@@ -27,7 +27,7 @@ docker compose up --build
 
 ## Миграции
 ```bash
-alembic upgrade head
+docker compose run --rm api alembic upgrade head
 ```
 
 ## Аутентификация
@@ -105,3 +105,12 @@ python tests/smoke_load.py
 - `CONCURRENCY`
 - `WAIT_TIMEOUT_SECONDS`
 - `BASE_URL`
+
+### List payments
+`GET /api/v1/payments?limit=100&offset=0`
+
+Example:
+```bash
+curl "http://localhost:8000/api/v1/payments?limit=50&offset=0" \
+  -H "X-API-Key: dev-secret-key"
+```
