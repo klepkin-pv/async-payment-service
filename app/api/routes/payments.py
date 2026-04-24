@@ -1,11 +1,11 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db_session
 from app.schemas.payment import PaymentAccepted, PaymentCreate, PaymentResponse
-from app.services.payments import create_or_get_payment, get_payment
+from app.services.payments import create_or_get_payment, get_payment, list_payments
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -55,3 +55,13 @@ async def get_payment_details(
             status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found"
         )
     return map_payment_response(payment)
+
+
+@router.get("", response_model=list[PaymentResponse])
+async def get_payments_list(
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    session: AsyncSession = Depends(get_db_session),
+) -> list[PaymentResponse]:
+    payments = await list_payments(session, limit=limit, offset=offset)
+    return [map_payment_response(payment) for payment in payments]

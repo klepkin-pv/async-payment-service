@@ -60,3 +60,12 @@ async def create_or_get_payment(
 
 async def get_payment(session: AsyncSession, payment_id: uuid.UUID) -> Payment | None:
     return await session.scalar(select(Payment).where(Payment.id == payment_id))
+
+
+async def list_payments(
+    session: AsyncSession, limit: int = 100, offset: int = 0
+) -> list[Payment]:
+    result = await session.scalars(
+        select(Payment).order_by(Payment.created_at.desc()).offset(offset).limit(limit)
+    )
+    return list(result)
