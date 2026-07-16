@@ -26,6 +26,15 @@ async def test_create_payment_requires_api_key(client: AsyncClient) -> None:
         json=payment_payload(),
         headers={"Idempotency-Key": "idem-key-1"},
     )
+    assert response.status_code == 422
+
+
+async def test_create_payment_with_invalid_api_key(client: AsyncClient) -> None:
+    response = await client.post(
+        "/api/v1/payments",
+        json=payment_payload(),
+        headers={"X-API-Key": "wrong-key", "Idempotency-Key": "idem-key-1"},
+    )
     assert response.status_code == 401
 
 
