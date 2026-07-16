@@ -13,11 +13,13 @@ from app.services.payments import create_or_get_payment, get_payment, list_payme
 pytestmark = pytest.mark.asyncio
 
 
-def sample_payment_create(**overrides: object) -> PaymentCreate:
+def sample_payment_create(
+    *, amount: Decimal | None = None, description: str = "Service test", **overrides: object
+) -> PaymentCreate:
     return PaymentCreate(
-        amount=Decimal("250.00"),
+        amount=amount or Decimal("250.00"),
         currency="USD",
-        description="Service test",
+        description=description,
         webhook_url="https://example.com/callback",
         **overrides,
     )

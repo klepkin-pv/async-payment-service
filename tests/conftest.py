@@ -21,40 +21,48 @@ from app.db.session import get_db_session
 from app.main import app
 from app.schemas.payment import PaymentCreate
 
-test_engine = create_async_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
-TestSessionLocal = async_sessionmaker(
-    test_engine, expire_on_commit=False, class_=AsyncSession
-)
+DATABASE_URL = os.environ["DATABASE_URL"]
 
 
-async def override_get_db_session() -> AsyncIterator[AsyncSession]:
-    async with TestSessionLocal() as session:
-        yield session
-
-
-app.dependency_overrides[get_db_session] = override_get_db_session
-
-
-@pytest_asyncio.fixture(autouse=True)
-async def setup_database() -> AsyncIterator[None]:
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+async def _lifespan_off_wrapper(scope: Any, receive: Any, send: Any) -> None:
+    """ASGI wrapper that ignores lifespan events so tests don't need RabbitMQ."""
+    if scope.get("type") == "lifespan":
+        while True:
+            message = await receive()
+            if message["type"] == "lifespan.startup":
+                await send({"type": "lifespan.startup.complete"})
+            elif message["type"] == "lifespan.shutdown":
+                await send({"type": "lifespan.shutdown.complete"})
+                return
+    else:
+        await app(scope, receive, send)
 
 
 @pytest_asyncio.fixture
 async def session() -> AsyncIterator[AsyncSession]:
-    async with TestSessionLocal() as session:
+    engine = create_async_engine(DATABASE_URL, pool_pre_ping=True)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with SessionLocal() as session:
         yield session
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
 
 
 @pytest_asyncio.fixture
-async def client() -> AsyncIterator[AsyncClient]:
-    transport = ASGITransport(app=app, lifespan="off")
+async def client(session: AsyncSession) -> AsyncIterator[AsyncClient]:
+    async def override_get_db_session() -> AsyncIterator[AsyncSession]:
+        yield session
+
+    app.dependency_overrides[get_db_session] = override_get_db_session
+    transport = ASGITransport(app=_lifespan_off_wrapper)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         yield client
+    app.dependency_overrides.pop(get_db_session, None)
 
 
 @pytest_asyncio.fixture
