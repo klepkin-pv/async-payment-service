@@ -1,5 +1,7 @@
 # Async Payment Service
 
+![CI](https://github.com/klepkin-pv/async-payment-service/actions/workflows/ci.yml/badge.svg)
+
 Микросервис для асинхронной обработки платежей:
 - принимает запросы на создание платежа
 - сохраняет событие в outbox
@@ -15,6 +17,17 @@
 - RabbitMQ + FastStream
 - Alembic
 - Docker Compose
+
+## Тесты
+
+Запуск unit/интеграционных тестов (требуется PostgreSQL):
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+pytest
+```
+
+CI запускает линтер (`ruff`) и тесты в GitHub Actions для каждого `push`/`pull_request`.
 
 ## Запуск
 ```bash
