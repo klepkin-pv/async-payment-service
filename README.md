@@ -92,10 +92,8 @@ curl "http://localhost:8000/api/v1/payments/<payment_id>" \
 - DLQ очередь: `payments.dlq`
 
 ## Идемпотентность
-`Idempotency-Key` уникален. Повторный запрос с тем же ключом возвращает уже созданный платеж.
 
-БЕЗ:
-Добавить уникальность пары `client_id + idempotency_key`, чтобы исключить пересечения между разными клиентами.
+`Idempotency-Key` уникален в рамках сервиса. Повторный запрос с тем же ключом возвращает уже созданный платеж, независимо от других полей payload.
 
 ## Webhook и DLQ
 - Если `webhook_url` доступен, consumer отправит уведомление о результате платежа.
@@ -125,5 +123,31 @@ python tests/smoke_load.py
 Example:
 ```bash
 curl "http://localhost:8000/api/v1/payments?limit=50&offset=0" \
+  -H "X-API-Key: dev-secret-key"
+```
+
+## Проверка статуса платежа
+
+Создайте платёж, дождитесь обработки consumer (2–5 секунд) и получите результат:
+
+```bash
+# 1. Создание платежа
+PAYMENT=$(curl -s -X POST "http://localhost:8000/api/v1/payments" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: dev-secret-key" \
+  -H "Idempotency-Key: demo-1" \
+  -d '{"amount":100,"currency":"RUB","description":"Demo","metadata":{},"webhook_url":"https://httpbin.org/post"}' | \
+  python -c "import sys,json; print(json.load(sys.stdin)['id'])")
+
+# 2. Повторный запрос с тем же Idempotency-Key вернёт тот же платёж
+curl -s -X POST "http://localhost:8000/api/v1/payments" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: dev-secret-key" \
+  -H "Idempotency-Key: demo-1" \
+  -d '{"amount":999,"currency":"USD","description":"Different"}' | \
+  python -c "import sys,json; d=json.load(sys.stdin); print(d['id'], d['status'])"
+
+# 3. Получение статуса
+curl "http://localhost:8000/api/v1/payments/$PAYMENT" \
   -H "X-API-Key: dev-secret-key"
 ```
